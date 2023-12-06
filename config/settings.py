@@ -41,6 +41,10 @@ ALLOWED_HOSTS = [
     "port-0-maifit-server-eu1k2lllf479w5.sel3.cloudtype.app",
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://port-0-maifit-server-eu1k2lllf479w5.sel3.cloudtype.app",
+]
+
 
 # Application definition
 
