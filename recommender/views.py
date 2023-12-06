@@ -1,6 +1,9 @@
 import subprocess
 import threading
+import io
+import uuid
 
+from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
 from django.db.models import F, Value
 from django.db.models.functions import Abs
@@ -25,7 +28,7 @@ def scrape_item(product_id: int) -> dict:
     # This is the function that scrapes the basic information of a good
     # The function should return a dictionary with keys "image", "brand", and "name"
     return {
-        "image": None, 
+        "image": None,
         "brand": Brand.objects.all().first(),
         "name": f"Product with ID {product_id}",
     }
@@ -76,8 +79,6 @@ def crop_and_format(image, bounding_box) -> Image:
     # This is the function that crops and formats the image
     # The function should return an Image object
     # For simplicity, I will just crop the image with the bounding box
-    return image
-
     return image.crop(
         (
             bounding_box["left"],
@@ -93,6 +94,18 @@ def infer_image(image_path) -> None:
     # This is the function that runs the system command to infer the image
     # The function should save the inference result to the database
     subprocess.run(["python", "infer", "image", image_path])
+
+
+def pil_image_to_content_file(pil_image):
+    # Create a file-like object in memory
+    image_file = io.BytesIO()
+    # Save the original image to the file-like object
+    pil_image.save(image_file, format="PNG")
+    # Create a ContentFile object from the file-like object
+    image_content = ContentFile(image_file.getvalue())
+    image_content.name = str(uuid.uuid4()) + ".png"
+
+    return image_content
 
 
 class ClientView(views.APIView):
@@ -117,6 +130,8 @@ class ClientView(views.APIView):
             )
 
         formatted_image = crop_and_format(image, image_data["bounding_box"])
+        image = pil_image_to_content_file(image)
+        formatted_image = pil_image_to_content_file(formatted_image)
         client = Client.objects.create(
             gender=gender, height=height, image=image, formatted_image=formatted_image
         )
