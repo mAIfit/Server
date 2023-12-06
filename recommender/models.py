@@ -20,10 +20,10 @@ class Client(models.Model):
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES) # 성별 선택
     height = models.FloatField() # 고객의 키
     image = models.ImageField(upload_to='clients/') # 고객의 전신 사진
-    formatted_image = models.ImageField(upload_to='clients/', null=True) # crop, format된 전신 사진, null 허용
-    inferred_model = models.FileField(upload_to='clients/', null=True) # 추론 결과로 저장된 파일(pkl), null 허용
-    overlayed_image = models.ImageField(upload_to='clients/', null=True) # 전신 사진 + 3D 모델 겹친 이미지, null 허용
-    model_image = models.ImageField(upload_to='clients/', null=True) # 중립 자세의 3D 모델 사진, null 허용
+    formatted_image = models.ImageField(upload_to='clients/', null=True, blank=True) # crop, format된 전신 사진, null 허용
+    inferred_model = models.FileField(upload_to='clients/', null=True, blank=True) # 추론 결과로 저장된 파일(pkl), null 허용
+    overlayed_image = models.ImageField(upload_to='clients/', null=True, blank=True) # 전신 사진 + 3D 모델 겹친 이미지, null 허용
+    model_image = models.ImageField(upload_to='clients/', null=True, blank=True) # 중립 자세의 3D 모델 사진, null 허용
 
 # review 모델은 상품에 대한 리뷰와 3D 모델을 나타냅니다.
 class Review(models.Model):
@@ -34,7 +34,7 @@ class Review(models.Model):
     height = models.FloatField() # 리뷰 작성자의 키
     weight = models.FloatField() # 리뷰 작성자의 몸무게
     image = models.ImageField(upload_to='reviews/') # 리뷰 작성자의 전신 사진
-    formatted_image = models.ImageField(upload_to='reviews/', null=True) # 자르고 정렬된 전신 사진, null 허용
-    inferred_model = models.FileField(upload_to='reviews/', null=True) # 추론 결과로 저장된 파일(pkl), null 허용
-    overlayed_image = models.ImageField(upload_to='reviews/', null=True) # 전신 사진 + 3D 모델 겹친 이미지, null 허용
-    model_image = models.ImageField(upload_to='reviews/', null=True) # 중립 자세의 3D 모델 사진, null 허용
+    formatted_image = models.ImageField(upload_to='reviews/', null=True, blank=True) # 자르고 정렬된 전신 사진, null 허용
+    inferred_model = models.FileField(upload_to='reviews/', null=True, blank=True) # 추론 결과로 저장된 파일(pkl), null 허용
+    overlayed_image = models.ImageField(upload_to='reviews/', null=True, blank=True) # 전신 사진 + 3D 모델 겹친 이미지, null 허용
+    model_image = models.ImageField(upload_to='reviews/', null=True, blank=True) # 중립 자세의 3D 모델 사진, null 허용
