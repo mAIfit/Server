@@ -5,13 +5,19 @@ from django.shortcuts import get_object_or_404
 from django.db.models import F, Value
 from django.db.models.functions import Abs
 from rest_framework import generics
+from rest_framework import views
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
 from PIL import Image
 
-from recommender.models import Good, Client, Review
-from recommender.serializers import GoodSerializer, ReviewSerializer
+from recommender.models import Brand, Good, Client, Review
+from recommender.serializers import (
+    ClientImageSerializer,
+    GoodSerializer,
+    ReviewImageSerializer,
+    ReviewSerializer,
+)
 
 
 def scrape_item(product_id: int) -> dict:
@@ -19,9 +25,9 @@ def scrape_item(product_id: int) -> dict:
     # This is the function that scrapes the basic information of a good
     # The function should return a dictionary with keys "image", "brand", and "name"
     return {
-        "image": f"https://example.com/images/{product_id}.jpg",
-        "brand": f"Brand {product_id}",
-        "name": f"Product {product_id}",
+        "image": None, 
+        "brand": Brand.objects.all().first(),
+        "name": f"Product with ID {product_id}",
     }
 
 
@@ -70,6 +76,8 @@ def crop_and_format(image, bounding_box) -> Image:
     # This is the function that crops and formats the image
     # The function should return an Image object
     # For simplicity, I will just crop the image with the bounding box
+    return image
+
     return image.crop(
         (
             bounding_box["left"],
@@ -87,7 +95,7 @@ def infer_image(image_path) -> None:
     subprocess.run(["python", "infer", "image", image_path])
 
 
-class ClientView(generics.GenericAPIView):
+class ClientView(views.APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):
@@ -95,6 +103,7 @@ class ClientView(generics.GenericAPIView):
         gender = request.POST.get("gender")
         height = request.POST.get("height")
         image = request.FILES.get("image")
+        image = Image.open(image)
 
         image_data = check_image(image)
         if not image_data["is_valid"]:
@@ -166,3 +175,41 @@ class ReviewListView(generics.ListAPIView):
         )
         queryset = queryset.order_by("difference")
         return queryset
+
+
+def infer_client(client) -> None:
+    # This is the function that infers the client's body shape
+    return None
+
+    client.model_image = "dummy_client_model_image.jpg"
+    client.save()
+
+
+def infer_review(review) -> None:
+    # This is the function that infers the review's body shape
+    return None
+
+    review.model_image = "dummy_review_model_image.jpg"
+    review.save()
+
+
+class ReviewBodyShapeView(generics.RetrieveAPIView):
+    lookup_url_kwarg = "review_id"
+
+    def get(self, request, review_id):
+        user_id = self.request.query_params.get("user_id")
+        # If the user_id is not provided, we raise a validation error
+        if not user_id:
+            raise ValidationError("user_id is required")
+
+        review = get_object_or_404(Review, id=review_id)
+        client = get_object_or_404(Client, id=user_id)
+
+        infer_client(client)
+        infer_review(review)
+
+        review_images = ReviewImageSerializer(review)
+        client_images = ClientImageSerializer(client)
+        data = {**review_images, **client_images}
+
+        return Response(data)

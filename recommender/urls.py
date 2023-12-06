@@ -11,7 +11,7 @@ urlpatterns = [
     ),  # 상품에 대한 리뷰 목록(유사 체형순), user_id 파라미터 요구
     path(
         "reviews/<int:review_id>/body_shapes",
-        views.review_body_shapes,
+        views.ReviewBodyShapeView.as_view(),
         name="review_body_shapes",
     ),  # 리뷰에 대한 3D 모델 보기, user_id 파라미터로 요구
 ]
