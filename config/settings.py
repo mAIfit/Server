@@ -36,6 +36,8 @@ SECRET_KEY = get_env_var("SECRET_KEY")
 DEBUG = True
 
 ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
     "port-0-maifit-server-eu1k2lllf479w5.sel3.cloudtype.app",
 ]
 
