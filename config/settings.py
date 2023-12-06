@@ -35,7 +35,9 @@ SECRET_KEY = get_env_var("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "port-0-maifit-server-eu1k2lllf479w5.sel3.cloudtype.app",
+]
 
 
 # Application definition
