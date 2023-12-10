@@ -227,8 +227,9 @@ class ReviewBodyShapeView(generics.RetrieveAPIView):
         infer_client(client)
         infer_review(review)
 
-        review_images = ReviewImageSerializer(review)
-        client_images = ClientImageSerializer(client)
+        review_images = ReviewImageSerializer(review).data
+        client_images = ClientImageSerializer(client).data
+
         data = {**review_images, **client_images}
 
         return Response(data)
