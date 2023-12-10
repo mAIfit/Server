@@ -159,6 +159,7 @@ def get_body_shape_difference(client, review):
     return:
         float that represents the difference. smaller is more similar
     """
+    return 1.0
 
 
 class ReviewListView(generics.ListAPIView):
@@ -179,16 +180,19 @@ class ReviewListView(generics.ListAPIView):
         if not client_id:
             raise ValidationError("user_id is required")
         client = get_object_or_404(Client, id=client_id)
-        queryset = super().get_queryset().filter(good_id=good_id)
+        queryset = super().get_queryset().objects.filter(good_id=good_id)
         queryset = queryset.annotate(
             height_diff=Abs(F("height") - Value(client.height))
         )
         queryset = queryset.filter(height_diff__lte=5)
 
-        queryset = queryset.annotate(
-            difference=lambda review: get_body_shape_difference(client, review)
-        )
-        queryset = queryset.order_by("difference")
+        # order the queryest by body shape difference ascending
+        queryset = sorted(queryset, key=lambda review: get_body_shape_difference(client, review))
+
+        # queryset = queryset.annotate(
+        #     difference=lambda review: get_body_shape_difference(client, review)
+        # )
+        # queryset = queryset.order_by("difference")
         return queryset
 
 
