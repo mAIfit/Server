@@ -32,18 +32,14 @@ def get_env_var(var_name, file_name=".env"):
 load_dotenv()
 SECRET_KEY = get_env_var("SECRET_KEY")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
-    "localhost",
-    "port-0-maifit-server-eu1k2lllf479w5.sel3.cloudtype.app",
     "kevinshin.iptime.org",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://port-0-maifit-server-eu1k2lllf479w5.sel3.cloudtype.app",
     "http://kevinshin.iptime.org",
 ]
 
@@ -140,6 +136,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = (
+    "/var/www/maifit/static"  # collectstatic -> static files copied to STATIC_ROOT
+)
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
