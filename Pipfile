@@ -9,6 +9,7 @@ djangorestframework = "*"
 python-dotenv = "*"
 pillow = "*"
 gunicorn = "*"
+django-cors-headers = "*"
 
 [dev-packages]
 
