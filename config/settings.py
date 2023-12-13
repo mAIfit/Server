@@ -32,7 +32,7 @@ def get_env_var(var_name, file_name=".env"):
 load_dotenv()
 SECRET_KEY = get_env_var("SECRET_KEY")
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
