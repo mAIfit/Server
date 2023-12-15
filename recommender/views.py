@@ -1,9 +1,13 @@
 import subprocess
 import threading
 import io
+import os
+import pickle
+import tempfile
 import uuid
 
-from django.core.files.base import ContentFile
+import numpy as np
+from django.core.files import File
 from django.shortcuts import get_object_or_404
 from django.db.models import F, Value
 from django.db.models.functions import Abs
@@ -12,7 +16,7 @@ from rest_framework import views
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
-from PIL import Image
+from rest_framework import status
 
 from recommender.models import Brand, Good, Client, Review
 from recommender.serializers import (
@@ -22,6 +26,14 @@ from recommender.serializers import (
     ReviewSerializer,
 )
 
+from recommender.tasks import (
+    estimate_mesh,
+    estimate_mesh_image,
+    save_client,
+    save_result,
+    scrape_reviews,
+)
+from celery import chain
 
 from scraper.scraper import parse_item
 
