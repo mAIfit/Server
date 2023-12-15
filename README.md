@@ -1,5 +1,18 @@
 # Server
 
+## Run Celery Workers
+`BASE_DIR`: 프로젝트 디렉터리
+
+```bash
+cd BASE_DIR && pipenv shell
+celery -A recommender.tasks worker -n scrape@%h -Q scrape -l INFO --logfile=/home/myungjune/projects/maifit-server/scraper-worker.log
+```
+
+```bash
+cd BASE_DIR && conda activate MultiPerson
+celery -A recommender.tasks worker -n estimate@%h -Q estimate -l INFO --logfile=/home/myungjune/projects/maifit-server/estimate-worker.log
+```
+
 ## Pipenv 설치
 pipenv를 설치하려면 다음 명령을 실행합니다:
 
