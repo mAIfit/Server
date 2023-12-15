@@ -13,6 +13,7 @@ django-cors-headers = "*"
 celery = "*"
 beautifulsoup4 = "*"
 requests = "*"
+numpy = "*"
 
 [dev-packages]
 
