@@ -10,6 +10,10 @@ python-dotenv = "*"
 pillow = "*"
 gunicorn = "*"
 django-cors-headers = "*"
+celery = "*"
+beautifulsoup4 = "*"
+requests = "*"
+numpy = "*"
 
 [dev-packages]
 
