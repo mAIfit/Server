@@ -206,3 +206,49 @@ class ReviewBodyShapeView(generics.RetrieveAPIView):
         data = {**review_images, **client_images}
 
         return Response(data)
+
+
+class TestView(views.APIView):
+    def get(self, request, product_id):
+        # implement complete in GoodsView.
+
+        chain(
+            scrape_reviews.s(
+                product_id, max_photos=3
+            ),  # TODO: try setting max_photos to larger number
+            estimate_mesh.s(),
+            save_result.s(product_id),
+        ).delay()
+
+        # return a success response
+        return Response({"message": "Tasks sent to the queue"})
+
+    def post(self, request, product_id):
+        image = request.FILES.get("image")
+
+        img_dir = os.getcwd()
+        img_name = str(uuid.uuid4()) + ".jpg"
+        img_path = os.path.join(img_dir, img_name)
+        with open(img_path, "wb") as f:
+            image_content = image.read()
+            f.write(image_content)
+        # get the full image path with os.path.abspath
+        full_img_path = os.path.abspath(img_path)
+
+        # fucking spaghetti
+        try:
+            client = Client.objects.get(id=product_id)
+        except Client.DoesNotExist:
+            client = Client.objects.create(
+                id=product_id, gender="M", height=170, image=image
+            )
+
+        # chain(estimate_mesh_image.s(full_img_path) | save_client.s(client.id)).delay()
+        result = (
+            chain(estimate_mesh_image.s(img_path) | save_client.s(client.id))
+            .delay()
+            .get()
+        )
+        # do something with result
+
+        return Response(f"done with {result}")

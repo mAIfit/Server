@@ -14,4 +14,7 @@ urlpatterns = [
         views.ReviewBodyShapeView.as_view(),
         name="review_body_shapes",
     ),  # 리뷰에 대한 3D 모델 보기, user_id 파라미터로 요구
+    path(
+        "testcelery/<int:product_id>", views.TestView.as_view()
+    ),
 ]
