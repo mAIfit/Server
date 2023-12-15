@@ -1,5 +1,3 @@
-import subprocess
-import threading
 import io
 import os
 import pickle
@@ -65,11 +63,6 @@ class GoodView(generics.GenericAPIView):
     lookup_url_kwarg = "good_id"
 
     def get(self, request, good_id):
-        # TODO: 상품 정보와 리뷰 scraping 시작
-        # 이미 존재하는 상품은 다시 scraping 하지 않음 (QuerySet API filter().exists()로 존재여부 확인)
-        # 상품 정보 scraping -> DB에 저장
-        # 상품 리뷰 scraping 시작 (async)
-
         good_data = scrape_item(good_id)
         if good_data is None:
             return Response(
@@ -84,30 +77,20 @@ class GoodView(generics.GenericAPIView):
             good.image.save(str(uuid.uuid4()) + ".jpg", good_data["image"])
             good_data["image"].close()  # close the BytesIO object
 
-def infer_image(image_path) -> None:
-    # TODO
-    # This is the function that runs the system command to infer the image
-    # The function should save the inference result to the database
-    subprocess.run(["python", "infer", "image", image_path])
+            chain(
+                scrape_reviews.s(good_id, max_photos=10)
+                | estimate_mesh.s()
+                | save_result.s(good_id)
+            ).delay()
 
-
-def pil_image_to_content_file(pil_image):
-    # Create a file-like object in memory
-    image_file = io.BytesIO()
-    # Save the original image to the file-like object
-    pil_image.save(image_file, format="PNG")
-    # Create a ContentFile object from the file-like object
-    image_content = ContentFile(image_file.getvalue())
-    image_content.name = str(uuid.uuid4()) + ".png"
-
-    return image_content
+        serializer = self.get_serializer(good)
+        return Response(serializer.data)
 
 
 class ClientView(views.APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):
-        # TODO: check correctness of request.data.get("image")
         gender = request.POST.get("gender")
         height = request.POST.get("height")
         image = request.FILES.get("image")
@@ -119,17 +102,34 @@ class ClientView(views.APIView):
             image=image,
         )
 
-        infer_thread = threading.Thread(target=infer_image, args=(client.image.path,))
-        infer_thread.start()
-
-        return Response(
-            {
-                "is_valid": True,
-                "invalid_reason": None,
-                "id": client.id,
-                "bounding_box": image_data["bounding_box"],
-            }
-        )
+        successful, client = estimate_client(client)
+        if not successful:
+            try:
+                client.delete()
+            except Exception as e:
+                print(f"failed to delete client {client}")
+                return Response(
+                    "person not found in provided image. failed to delete client",
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            return Response(
+                {
+                    "is_valid": False,
+                    "invalid_reason": "person not found in provided image",
+                    "id": None,
+                    "bounding_box": None # not used
+                }
+            )
+        else:
+            return Response(
+                {
+                    "is_valid": True,  # 플로우에서 불필요해 하드코딩
+                    "invalid_reason": None,  # 플로우에서 불필요해 하드코딩
+                    "id": client.id,
+                    "bounding_box": None,  # 플로우에서 불필요해 하드코딩
+                }
+            )
 
 
 def estimate_client(client: Client):
@@ -239,22 +239,6 @@ class ReviewListView(generics.ListAPIView):
         return queryset
 
 
-def infer_client(client) -> None:
-    # This is the function that infers the client's body shape
-    return None
-
-    client.model_image = "dummy_client_model_image.jpg"
-    client.save()
-
-
-def infer_review(review) -> None:
-    # This is the function that infers the review's body shape
-    return None
-
-    review.model_image = "dummy_review_model_image.jpg"
-    review.save()
-
-
 class ReviewBodyShapeView(generics.RetrieveAPIView):
     lookup_url_kwarg = "review_id"
 
@@ -267,11 +251,22 @@ class ReviewBodyShapeView(generics.RetrieveAPIView):
         review = get_object_or_404(Review, id=review_id)
         client = get_object_or_404(Client, id=user_id)
 
-        infer_client(client)
-        infer_review(review)
+        success, client = estimate_client(client)
+        if not success:
+            return Response(
+                "failed to estimate or render mesh of client",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
-        review_images = ReviewImageSerializer(review).data
-        client_images = ClientImageSerializer(client).data
+        success, review = estimate_review(review)
+        if not success:
+            return Response(
+                "failed to estimate or render mesh of client",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        review_images = ReviewImageSerializer(review, context={"request": request}).data
+        client_images = ClientImageSerializer(client, context={"request": request}).data
 
         data = {**review_images, **client_images}
 
