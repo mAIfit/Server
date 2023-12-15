@@ -120,17 +120,75 @@ class ClientView(views.APIView):
         )
 
 
-def get_body_shape_difference(client, review):
-    # TODO
-    """
-    calculates the body shape difference between the client and a review
-    args:
-        client: Client, review: Review
-    cannot assume that the review's body shape is already calculated. run inference if the review's body shape is not yet calculated
-    return:
-        float that represents the difference. smaller is more similar
-    """
-    return 1.0
+def estimate_client(client: Client):
+    success = False
+    if not client.inferred_model or not client.overlayed_image:
+        img_path = client.image.path
+        result = (
+            chain(estimate_mesh_image.s(img_path) | save_client.s(client.id))
+            .delay()
+            .get()
+        )
+        success = False if result is None else True
+    else:
+        success = True
+
+    client = Client.objects.get(id=client.id)
+    return success, client
+
+
+def estimate_review(review: Review):
+    success = True
+    if not review.inferred_model or not review.overlayed_image:
+        img_path = review.image.path
+        result = estimate_mesh_image.s(img_path).delay().get()
+        success = False if result is None else True
+
+        # save betas
+        with tempfile.NamedTemporaryFile() as tmp:
+            pickle.dump(result["betas"], tmp)
+            review.inferred_model.save(str(uuid.uuid4()) + ".pkl", File(tmp))
+        # save mesh
+        with open(result["meshed_image"], "rb") as f:
+            review.overlayed_image.save(str(uuid.uuid4()) + ".jpg", File(f))
+        # remove temporary file: meshed image
+        if os.path.exists(result["meshed_image"]):
+            os.remove(result["meshed_image"])
+    else:
+        success = True
+
+    review = Review.objects.get(id=review.id)
+    return success, review
+
+
+def get_body_shape_difference(client: Client, review: Review):
+    success, client = estimate_client(client)
+    if not success:
+        return 1.0
+
+    success, review = estimate_review(review)
+    if not success:
+        return 1.0
+
+    # get user and reviewer betas, stored as a pkl file
+    # store the betas in a python list
+    client_betas = []
+    review_betas = []
+
+    with open(client.inferred_model.path, "rb") as f:
+        client_betas = pickle.load(f)
+        assert type(client_betas) == type([]) and len(client_betas) == 10
+
+    with open(review.inferred_model.path, "rb") as f:
+        review_betas = pickle.load(f)
+        assert type(review_betas) == type([]) and len(review_betas) == 10
+
+    # calculate the cosine distance between the two betas
+    client_betas, review_betas = np.array(client_betas), np.array(review_betas)
+    cosine_distance = 1 - np.dot(client_betas, review_betas) / (
+        np.linalg.norm(client_betas) * np.linalg.norm(review_betas)
+    )
+    return cosine_distance
 
 
 class ReviewListView(generics.ListAPIView):
