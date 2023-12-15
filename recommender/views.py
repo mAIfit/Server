@@ -23,22 +23,27 @@ from recommender.serializers import (
 )
 
 
-def scrape_item(product_id: int) -> dict:
-    # TODO
-    # This is the function that scrapes the basic information of a good
-    # The function should return a dictionary with keys "image", "brand", and "name"
+from scraper.scraper import parse_item
+
+
+def scrape_item(product_id: int) -> dict | None:
+    """
+    product_id를 ID로 갖는 상품정보(상품명, 상품이미지, 브랜드명) 스크레이핑해 DB에 저장, dictionary로 반환
+    """
+    good_data = parse_item(product_id)
+    if good_data is None:
+        return None
+
+    brand, _ = Brand.objects.get_or_create(name=good_data["brand"])
+
+    image_content = good_data["image"]
+    image_file = io.BytesIO(image_content)
+
     return {
-        "image": None,
-        "brand": Brand.objects.all().first(),
-        "name": f"Product with ID {product_id}",
+        "image": image_file,
+        "brand": brand,
+        "name": good_data["name"],
     }
-
-
-def scrape_reviews(product_id: int) -> None:
-    # TODO
-    # This is the function that scrapes the reviews of a good
-    # The function should save the reviews to the database
-    subprocess.run(["python", "scraper", "reviews", str(product_id)])
 
 
 class GoodView(generics.GenericAPIView):
