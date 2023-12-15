@@ -59,40 +59,18 @@ class GoodView(generics.GenericAPIView):
         # 상품 리뷰 scraping 시작 (async)
 
         good_data = scrape_item(good_id)
-        good, created = Good.objects.get_or_create(id=good_id, defaults=good_data)
-        if created:
-            review_thread = threading.Thread(target=scrape_reviews, args=(good_id,))
-            review_thread.start()
+        if good_data is None:
+            return Response(
+                f"failed to scrape good with id {good_id}",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        serializer = self.get_serializer(good)
-        return Response(serializer.data)
-
-
-def check_image(image) -> dict:
-    # TODO
-    # This is the function that checks the validity of the received image
-    # The function should return a dictionary with keys "is_valid", "invalid_reason", and "bounding_box"
-    return {
-        "is_valid": True,
-        "invalid_reason": None,
-        "bounding_box": {"left": 5, "top": 20, "right": 120, "bottom": 140},
-    }
-
-
-def crop_and_format(image, bounding_box) -> Image:
-    # TODO
-    # This is the function that crops and formats the image
-    # The function should return an Image object
-    # For simplicity, I will just crop the image with the bounding box
-    return image.crop(
-        (
-            bounding_box["left"],
-            bounding_box["top"],
-            bounding_box["right"],
-            bounding_box["bottom"],
-        )
-    )
-
+        try:
+            good = Good.objects.get(id=good_id)
+        except Good.DoesNotExist:
+            good = Good(id=good_id, brand=good_data["brand"], name=good_data["name"])
+            good.image.save(str(uuid.uuid4()) + ".jpg", good_data["image"])
+            good_data["image"].close()  # close the BytesIO object
 
 def infer_image(image_path) -> None:
     # TODO
@@ -121,24 +99,12 @@ class ClientView(views.APIView):
         gender = request.POST.get("gender")
         height = request.POST.get("height")
         image = request.FILES.get("image")
-        image = Image.open(image)
-
-        image_data = check_image(image)
-        if not image_data["is_valid"]:
-            return Response(
-                {
-                    "is_valid": False,
-                    "invalid_reason": image_data["invalid_reason"],
-                    "id": None,
-                    "bounding_box": None,
-                }
-            )
-
-        formatted_image = crop_and_format(image, image_data["bounding_box"])
-        image = pil_image_to_content_file(image)
-        formatted_image = pil_image_to_content_file(formatted_image)
+        if gender is None or height is None or image is None:
+            return Response("gender, image, height is required")
         client = Client.objects.create(
-            gender=gender, height=height, image=image, formatted_image=formatted_image
+            gender=gender,
+            height=height,
+            image=image,
         )
 
         infer_thread = threading.Thread(target=infer_image, args=(client.image.path,))
@@ -192,7 +158,9 @@ class ReviewListView(generics.ListAPIView):
         queryset = queryset.filter(height_diff__lte=5)
 
         # order the queryest by body shape difference ascending
-        queryset = sorted(queryset, key=lambda review: get_body_shape_difference(client, review))
+        queryset = sorted(
+            queryset, key=lambda review: get_body_shape_difference(client, review)
+        )
 
         # queryset = queryset.annotate(
         #     difference=lambda review: get_body_shape_difference(client, review)
